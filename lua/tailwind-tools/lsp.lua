@@ -121,14 +121,12 @@ local function sort_classes(ranges, bufnr, sync)
     client.request("@/tailwindCSS/sortSelection", params, handler, bufnr)
   end
 end
----@module 'lspconfig.configs'
 
 ---@param server_config TailwindTools.ServerOption
----@param lspconfig { tailwindcss: lspconfig.Config }
-M.setup = function(server_config, lspconfig)
+M.setup = function(server_config)
   local conf = { settings = {} }
   conf.on_attach = M.make_on_attach(server_config.on_attach)
-  conf.root_dir = server_config.root_dir or M.make_root_dir(lspconfig)
+  conf.root_dir = server_config.root_dir or M.make_root_dir()
 
   conf.settings.tailwindCSS = vim.tbl_get(server_config, "settings", "tailwindCSS") or {}
   conf.settings.tailwindCSS =
@@ -144,21 +142,41 @@ M.setup = function(server_config, lspconfig)
     dynamicRegistration = true,
   }
 
-  lspconfig.tailwindcss.setup(conf)
+  -- Use new Neovim 0.11+ API
+  vim.lsp.config('tailwindcss', conf)
 end
 
----@type fun(lspconfig: any)
 ---@return function(fname: string): string?
-M.make_root_dir = function(lspconfig)
+M.make_root_dir = function()
   return function(fname)
-    local root_files = lspconfig.util.insert_package_json({
-      "tailwind.config.{js,cjs,mjs,ts}",
-      "assets/tailwind.config.{js,cjs,mjs,ts}",
-      "theme/static_src/tailwind.config.{js,cjs,mjs,ts}",
+    local root_files = {
+      "tailwind.config.js",
+      "tailwind.config.cjs",
+      "tailwind.config.mjs",
+      "tailwind.config.ts",
+      "assets/tailwind.config.js",
+      "assets/tailwind.config.cjs",
+      "assets/tailwind.config.mjs",
+      "assets/tailwind.config.ts",
+      "theme/static_src/tailwind.config.js",
+      "theme/static_src/tailwind.config.cjs",
+      "theme/static_src/tailwind.config.mjs",
+      "theme/static_src/tailwind.config.ts",
       "app/assets/stylesheets/application.tailwind.css",
       "app/assets/tailwind/application.css",
-    }, "tailwindcss", fname)
-    return lspconfig.util.root_pattern(root_files)(fname)
+      "package.json",
+    }
+    
+    local found = vim.fs.find(root_files, {
+      path = fname,
+      upward = true,
+    })
+    
+    if #found > 0 then
+      return vim.fs.dirname(found[1])
+    end
+    
+    return nil
   end
 end
 
