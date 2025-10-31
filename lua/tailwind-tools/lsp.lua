@@ -143,12 +143,18 @@ M.setup = function(server_config)
   }
 
   -- Use new Neovim 0.11+ API
-  vim.lsp.config('tailwindcss', conf)
+  vim.lsp.config("tailwindcss", conf)
 end
 
 ---@return function(fname: string): string?
 M.make_root_dir = function()
   return function(fname)
+    -- Convert buffer number to file path if needed
+    if type(fname) == "number" then fname = vim.api.nvim_buf_get_name(fname) end
+
+    -- Return nil if no valid path
+    if not fname or fname == "" then return nil end
+
     local root_files = {
       "tailwind.config.js",
       "tailwind.config.cjs",
@@ -166,16 +172,14 @@ M.make_root_dir = function()
       "app/assets/tailwind/application.css",
       "package.json",
     }
-    
+
     local found = vim.fs.find(root_files, {
       path = fname,
       upward = true,
     })
-    
-    if #found > 0 then
-      return vim.fs.dirname(found[1])
-    end
-    
+
+    if #found > 0 then return vim.fs.dirname(found[1]) end
+
     return nil
   end
 end
